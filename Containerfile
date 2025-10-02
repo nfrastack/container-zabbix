@@ -18,13 +18,14 @@ LABEL \
         org.opencontainers.image.licenses="MIT"
 
 ARG \
-    ZABBIX_VERSION
+    ZABBIX_VERSION="7.4.3" \
+    ZABBIX_REPO_URL="https://github.com/zabbix/zabbix"
 
 COPY CHANGELOG.md /usr/src/container/CHANGELOG.md
 COPY LICENSE /usr/src/container/LICENSE
 COPY README.md /usr/src/container/README.md
 
-ENV ZABBIX_VERSION=${ZABBIX_VERSION:-"7.4.3"} \
+ENV \
     PHP_ENABLE_LDAP=TRUE \
     PHP_ENABLE_CREATE_SAMPLE_PHP=FALSE \
     PHP_ENABLE_SOCKETS=TRUE \
@@ -112,7 +113,7 @@ RUN echo "" && \
             /var/lib/zabbix/ssl/ssl_ca \
             && \
     \
-    clone_git_repo https://github.com/zabbix/zabbix ${ZABBIX_VERSION} && \
+    clone_git_repo "${ZABBIX_REPO_URL}" "${ZABBIX_VERSION}" && \
     sed -i "s|{ZABBIX_REVISION}|$(git log | head -n 1 | awk '{print $2}')|g" include/version.h  && \
     ./bootstrap.sh && \
     export CFLAGS="-fPIC -pie -Wl,-z,relro -Wl,-z,now" && \
