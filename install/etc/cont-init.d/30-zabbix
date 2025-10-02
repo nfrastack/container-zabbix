@@ -6,6 +6,33 @@ source /assets/functions/30-zabbix
 
 SERVICE_NAME="zabbix"
 
+cat <<EOF
+
+*************************************************************************************
+*                                                                                   *
+*                    END OF LIFE NOTICE AUGUST 18, 2025                             *
+*                               tiredofit/zabbix                                    *
+*                                                                                   *
+* This image is no longer maintained as of and will not receive updates.            *
+*                                                                                   *
+* A successor image is available at:                                                *
+*                                                                                   *
+* Repository | Documentation:                                                       *
+*   - https://github.com/nfrastack/container-zabbix                                 *
+*                                                                                   *
+* Image Registries:                                                                 *
+*   - https://hub.docker.com/r/nfrastack/zabbix                                     *
+*   - https://github.com/nfrastack/container-zabbix/pkgs/container/container-zabbix *
+*                                                                                   *
+* Please visit https://nfrastack.com for more information.                          *
+*                                                                                   *
+*************************************************************************************
+
+EOF
+
+sleep 15
+
+
 transform_file_var \
                 DB_HOST \
                 DB_NAME \
