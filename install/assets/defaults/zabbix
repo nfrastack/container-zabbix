@@ -1,8 +1,0 @@
-#!/command/with-contenv bash
-
-DB_SCHEMA=${DB_SCHEMA:-"public"}
-ZABBIX_CERT_PATH=${ZABBIX_CERT_PATH:-"/etc/zabbix/certs/"}
-DB_PORT=${DB_PORT:-"5432"}
-ZABBIX_DB_UPGRADED=${DB_UPGRADED:-"TRUE"}
-ZABBIX_MODE=${ZABBIX_MODE:-"PROXY"}
-ZABBIX_USER=${ZABBIX_USER:-"zabbix"}

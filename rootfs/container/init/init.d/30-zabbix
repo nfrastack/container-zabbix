@@ -1,0 +1,84 @@
+#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+source /container/base/functions/container/init
+source /container/defaults/zabbix
+prepare_service 30-zabbix
+
+SERVICE_NAME="zabbix"
+
+transform_var file \
+                    DB_HOST \
+                    DB_NAME \
+                    DB_PASS \
+                    DB_PORT \
+                    DB_USER
+
+case "${ZABBIX_MODE,,}" in
+    "proxy" )
+        print_debug "Zabbix Container Mode; Proxy"
+        source /container/defaults/zabbix-proxy
+        service_stop 10-nginx
+        service_stop 11-nginx-config-reload
+        service_stop 20-php-fpm
+        service_stop 30-zabbix-server
+        service_stop 30-zabbix-webservice
+        rm -rf /etc/logrotate.d/{nginx,php-fpm}
+        zabbix_configure_proxy
+        if [ "${ZABBIX_PROXY_LOG_TYPE,,}" = "file" ] ; then
+            create_logrotate zabbix_proxy "${ZABBIX_PROXY_LOG_PATH%/}"/"${ZABBIX_PROXY_LOG_FILE}" "${ZABBIX_USER}" "${ZABBIX_USER}"
+        fi
+    ;;
+    "server" )
+        print_debug "Zabbix Container Mode; Server"
+        service_stop 10-nginx
+        service_stop 11-nginx-config-reload
+        service_stop 20-php-fpm
+        service_stop 30-zabbix-proxy
+        service_stop 30-zabbix-webservice
+        rm -rf /etc/logrotate.d/{nginx,php-fpm}
+        source /container/defaults/zabbix-server
+        sanity_db
+        db_ready postgres
+        zabbix_bootstrap_db
+        zabbix_configure_server
+        if [ "${ZABBIX_SERVER_LOG_TYPE,,}" = "file" ] ; then
+            create_logrotate zabbix_server "${ZABBIX_SERVER_LOG_PATH%/}"/"${ZABBIX_SERVER_LOG_FILE}" "${ZABBIX_USER}" "${ZABBIX_USER}"
+        fi
+    ;;
+    "web" | "frontend" )
+        print_debug "Zabbix Container Mode; Web Frontend"
+        check_service_initialized init 20-php-fpm
+        sanity_db
+        db_ready postgres
+        service_stop 30-zabbix-proxy
+        service_stop 30-zabbix-server
+        service_stop 30-zabbix-webservice
+        zabbix_configure_web_frontend
+    ;;
+    "webservice" )
+        print_debug "Zabbix Container Mode; Webservice"
+        service_stop 10-nginx
+        service_stop 11-nginx-config-reload
+        service_stop 20-php-fpm
+        service_stop 30-zabbix-proxy
+        service_stop 30-zabbix-server
+        rm -rf /etc/logrotate.d/{nginx,php-fpm}
+        source /container/defaults/zabbix-webservice
+        zabbix_configure_webservice
+        if [ "${ZABBIX_WEBSERVICE_LOG_TYPE,,}" = "file" ] ; then
+            create_logrotate zabbix_webservice "${ZABBIX_WEBSERVICE_LOG_PATH%/}"/"${ZABBIX_WEBSERVICE_LOG_FILE}" "${ZABBIX_USER}" "${ZABBIX_USER}"
+        fi
+    ;;
+    *)
+        print_error "Unknown ZABBIX_MODE - exiting."
+        exit 1
+    ;;
+esac
+
+zabbix_configure_scripts_alert
+zabbix_configure_scripts_external
+
+liftoff

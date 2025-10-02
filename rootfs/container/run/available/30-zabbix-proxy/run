@@ -1,0 +1,15 @@
+#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+source /container/base/functions/container/init
+source /container/defaults/zabbix
+source /container/defaults/zabbix-proxy
+SERVICE_NAME="zabbix-proxy"
+
+check_container_initialized
+liftoff
+
+print_start "Starting Zabbix Proxy $(zabbix_proxy -V | head -n 1 | awk '{print $NF}')"
+silent exec s6-setuidgid ${ZABBIX_USER} zabbix_proxy -c "${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}" -f;

@@ -1,0 +1,145 @@
+services:
+
+    zabbix-example-com-server:
+      image: docker.io/nfrastack/zabbix:latest
+      container_name: zabbix-example-com-server
+      ports:
+        - 127.0.0.1:10051:10051
+      volumes:
+        - ./assets/externalscripts:/assets/externalscripts
+        - ./assets/alertscripts:/assets/alertscripts
+        - ./data/var/lib/zabbix/modules:/var/lib/zabbix/modules
+        - ./data/var/lib/zabbix/enc:/var/lib/zabbix/enc
+        - ./data/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys
+        - ./data/var/lib/zabbix/mibs:/var/lib/zabbix/mibs
+        - ./logs/server:/var/log/zabbix/server
+      links:
+        - zabbix-example-com-db
+      ulimits:
+        nproc: 65535
+        nofile:
+          soft: 20000
+          hard: 40000
+        #mem_limit: 512m
+      environment:
+        - TIMEZONE=America/Vancouver
+        - ZABBIX_MODE=SERVER
+        - CONTAINER_NAME=zabbix-example-com-server
+
+        - DB_HOST=zabbix-example-com-db
+        - DB_PORT=5432
+        - DB_NAME=zabbix
+        - DB_PASS=password
+        - DB_USER=zabbix
+        - DB_SCHEMA=public
+      networks:
+        services:
+          aliases:
+            - zabbix-server
+      restart: always
+
+    zabbix-example-com-app:
+      image: docker.io/nfrastack/zabbix:latest
+      container_name: zabbix-example-com-app
+      #mem_limit: 512m
+      ports:
+        - 8081:80
+      links:
+        - zabbix-example-com-db
+        - zabbix-example-com-server
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.zabbix-example.com.rule=Host(`zabbix.example.com`)
+        - traefik.http.services.zabbix-example.com.loadbalancer.server.port=80
+      volumes:
+        - ./logs/nginx:/www/logs/nginx
+      environment:
+        - TIMEZONE=America/Vancouver
+        - ZABBIX_MODE=WEB
+        - CONTAINER_NAME=zabbix-example.com-app
+        - ZABBIX_SERVER_HOST=zabbix-example-com-server
+        - ZABBIX_SERVER_PORT=10051
+        - ZABBIX_SERVER_NAME=zabbix.example.com
+
+        - PHP_TIMEOUT=600
+        - PHP_MEMORY_LIMIT=512M
+
+        - DB_HOST=zabbix-example-com-db
+        - DB_PORT=5432
+        - DB_USER=zabbix
+        - DB_PASS=password
+        - DB_NAME=zabbix
+        - DB_SCHEMA=public
+      networks:
+        - proxy
+        - services
+
+    zabbix-example-com-db:
+      image: docker.io/tiredofit/postgres:latest
+      container_name: zabbix-example-com-db
+      user: root
+      volumes:
+        - /var/local/db/zabbix.example.com:/var/lib/postgresql/data
+      environment:
+        - TIMEZONE=America/Vancouver
+        - POSTGRES_USER=zabbix
+        - POSTGRES_PASSWORD=password
+        - POSTGRES_DB=zabbix
+        - CONTAINER_NAME=zabbix-example-com-db
+        - ZABBIX_SERVER=172.16.0.0/12
+        - ZABBIX_SERVER_ACTIVE=zabbix-example-com-server
+      networks:
+        services:
+          aliases:
+            - zabbix-db
+      restart: always
+
+    zabbix-example-com-proxy:
+      image: docker.io/nfrastack/zabbix:latest
+      container_name: zabbix-example-com-proxy
+      mem_limit: 256m
+      volumes:
+        - ./logs/proxy:/var/log/zabbix/proxy
+      environment:
+        - ZABBIX_MODE=PROXY
+        - CONTAINER_NAME=zabbix-example-com-proxy
+        - ZABBIX_PROXY_HOSTNAME=zabbix-proxy.example.com
+        - ZABBIX_PROXY_SERVER=zabbix.example.com
+        - ZABBIX_PROXY_SERVER_PORT=10051
+        - ZABBIX_PROXY_LISTEN_PORT=10051
+      networks:
+        services:
+          aliases:
+            - dev-zabbix-proxy
+      restart: always
+
+    zabbix-example-com-db-backup:
+      image: docker.io/tiredofit/db-backup
+      container_name: zabbix-example-com-db-backup
+      links:
+        - zabbix-example-com-db
+      volumes:
+        - /mnt/data/data/zabbix.example.com/dbbackup:/backup
+      environment:
+        - TIMEZONE=America/Vancouver
+        - CONTAINER_NAME=zabbix-example-com-db-backup
+        - ZABBIX_SERVER=172.16.0.0/12
+        - ZABBIX_SERVER_ACTIVE=zabbix-example-com-server
+
+        - DB01_HOST=zabbix-example-com-db
+        - DB01_TYPE=postgres
+        - DB01_NAME=zabbix
+        - DB01_USER=zabbix
+        - DB01_PASS=password
+        - DB01_BACKUP_INTERVAL=1440
+        - DB01_BACKUP_BEGIN=0130
+        - DB01_CLEANUP_TIME=8640
+      networks:
+        - services
+      restart: always
+
+networks:
+  proxy:
+    external: true
+  services:
+    external: true
