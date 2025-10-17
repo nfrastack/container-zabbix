@@ -95,6 +95,9 @@ RUN echo "" && \
                         ZABBIX_RUN_DEPS \
                         && \
     \
+    php-ext prepare && \
+    php-ext reset && \
+    php-ext enable core && \
     mkdir -p \
             /etc/zabbix \
             /usr/lib/zabbix/alertscripts \

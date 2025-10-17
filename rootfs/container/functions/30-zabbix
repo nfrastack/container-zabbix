@@ -107,7 +107,7 @@ EOF
         write_config_value "${config_file}" "ZABBIX_PROXY_HOSTNAME" "Hostname"
         write_config_value "${config_file}" "ZABBIX_PROXY_LISTEN_PORT" "ListenPort"
         write_config_value "${config_file}" "ZABBIX_PROXY_LOGFILESIZE" "LogFileSize"
-        write_config_value "${config_file}" "ZABBIX_PROXY_LOG_TYPE" "LogType"
+        write_config_value "${config_file}" "ZABBIX_PROXY_LOG_TYPE" "LogType" lowercase
         write_config_value "${config_file}" "ZABBIX_PROXY_MODE" "ProxyMode"
         write_config_value "${config_file}" "ZABBIX_PROXY_REMOTECOMMANDS" "EnableRemoteCommands"
         write_config_value "${config_file}" "ZABBIX_PROXY_REMOTECOMMANDS_LOG" "LogRemoteCommands"
@@ -222,7 +222,7 @@ write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_HISTORY_INDEX_SIZE" "Hi
 write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_HOUSEKEEPING" "HousekeepingFrequency"
 write_config_value "${config_file}" "ZABBIX_SERVER_LISTEN_PORT" "ListenPort"
 write_config_value "${config_file}" "ZABBIX_SERVER_LOGFILESIZE" "LogFileSize"
-write_config_value "${config_file}" "ZABBIX_SERVER_LOG_TYPE" "LogType"
+write_config_value "${config_file}" "ZABBIX_SERVER_LOG_TYPE" "LogType" lowercase
 write_config_value "${config_file}" "ZABBIX_SERVER_MAX_HOUSEKEEPING_DELETE" "MaxHousekeeperDelete"
 write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_PROXY_CONFIG" "ProxyConfigFrequency"
 write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_PROXY_DATA" "ProxyDataFrequency"
@@ -282,14 +282,14 @@ zabbix_configure_webservice() {
 # Custom Generated Zabbix Webservice configuration. If you want to use your own config set 'ZABBIX_WEBSERVICE_SETUP_TYPE=MANUAL'
 # Generated on $(TZ=${TIMEZONE} date +'%Y-%m-%d %H:%M:%S %Z')
 
-LogFile=${ZABBIX_WEBSERVICE_LOG_PATH}/${ZABBIX_WEBSERVICE_LOG_FILE}
+LogFile=${ZABBIX_WEBSERVICE_LOG_PATH%/}/${ZABBIX_WEBSERVICE_LOG_FILE}
 EOF
 
         write_config_value "${config_file}" "ZABBIX_WEBSERVICE_ALLOWED_IPS" "AllowedIP"
         write_config_value "${config_file}" "ZABBIX_WEBSERVICE_DEBUG_LEVEL" "DebugLevel"
         write_config_value "${config_file}" "ZABBIX_WEBSERVICE_LISTEN_PORT" "ListenPort"
         write_config_value "${config_file}" "ZABBIX_WEBSERVICE_LOGFILESIZE" "LogFileSize"
-        write_config_value "${config_file}" "ZABBIX_WEBSERVICE_LOG_TYPE" "LogType"
+        write_config_value "${config_file}" "ZABBIX_WEBSERVICE_LOG_TYPE" "LogType" lowercase
         write_config_value "${config_file}" "ZABBIX_WEBSERVICE_TIMEOUT" "Timeout"
 
         if var_true "${CONTAINER_ENABLE_MONITORING}" && [ "${CONTAINER_MONITORING_BACKEND,,}" = "zabbix" ]; then
@@ -348,8 +348,13 @@ write_config_value() {
     local config_file="$1"
     local env_var_name="$2"
     local config_key="$3"
+    local lowercase_flag="$4"
 
     if [ -n "${!env_var_name}" ]; then
-        echo "${config_key}=${!env_var_name}" >> "${config_file}"
+        local val="${!env_var_name}"
+        if [ "${lowercase_flag}" = "lowercase" ] ; then
+            val="$(printf '%s' "${val}" | tr '[:upper:]' '[:lower:]')"
+        fi
+        echo "${config_key}=${val}" >> "${config_file}"
     fi
 }
