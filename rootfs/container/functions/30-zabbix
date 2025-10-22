@@ -150,23 +150,30 @@ EOF
         echo "Include=${ZABBIX_PROXY_CONFIG_PATH}/${ZABBIX_PROXY_CONFIG_FILE}.d/*.conf" | silent tee -a "${ZABBIX_PROXY_CONFIG_PATH}"/"${ZABBIX_PROXY_CONFIG_FILE}"
     fi
 
+    if var_true "${CONTAINER_ENABLE_MONITORING}" ; then
+        source /container/base/defaults/*-monitoring
+        case "${CONTAINER_MONITORING_BACKEND,,}" in
+            "zabbix" )
+                cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-proxy.conf
     if var_true "${CONTAINER_ENABLE_MONITORING}" && [ "${CONTAINER_MONITORING_BACKEND,,}" = "zabbix" ]; then
-        source /container/defaults/03-monitoring
+        source /container/defaults/*-monitoring
         cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-proxy.conf
 # Zabbix Proxy Configuration - Automatically Generated
 # Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-zabbix
 # Autoregister=zabbixproxy
 EOF
-        rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nginx.conf
-        rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/php-fpm.conf
-        rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack-php_opcache.conf
+                rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nginx.conf
+                rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/php-fpm.conf
+                rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack-php_opcache.conf
+            ;;
+        esac
     fi
 
     mkdir -p "${ZABBIX_PROXY_LOG_PATH}"
     chown -R "${ZABBIX_USER}" "${ZABBIX_PROXY_LOG_PATH}"
     chown -R "${ZABBIX_USER}" "${ZABBIX_PROXY_CONFIG_PATH}"
-    mkdir -p "${ZABBIX_PROXY_CONFIG_PATH}"/"${ZABBIX_PROXY_CONFIG_FILE}".d/
-    chown -R "${ZABBIX_USER}" "${ZABBIX_PROXY_CONFIG_PATH}"/"${ZABBIX_PROXY_CONFIG_FILE}".d/
+    mkdir -p "${ZABBIX_PROXY_CONFIG_PATH$/}"/"${ZABBIX_PROXY_CONFIG_FILE}".d/
+    chown -R "${ZABBIX_USER}" "${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}".d/
 }
 
 zabbix_configure_scripts_alert() {
@@ -256,23 +263,27 @@ write_config_value "${config_file}" "ZABBIX_SERVER_WEBSERVICE_URL" "WebServiceUR
 echo "Include=${ZABBIX_SERVER_CONFIG_PATH%/}/${ZABBIX_SERVER_CONFIG_FILE}.d/*.conf" >> "${config_file}"
     fi
 
-        if var_true "${CONTAINER_ENABLE_MONITORING}" && [ "${CONTAINER_MONITORING_BACKEND,,}" = "zabbix" ]; then
-            source /container/defaults/03-monitoring
-            cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-server.conf
+        if var_true "${CONTAINER_ENABLE_MONITORING}" ; then
+            source /container/base/defaults/*-monitoring
+            case "${CONTAINER_MONITORING_BACKEND,,}" in
+                "zabbix" )
+                    cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-server.conf
 # Zabbix Server Configuration - Automatically Generated
 # Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-zabbix
 # Autoregister=zabbixserver
 EOF
-            rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/nginx.conf
-            rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/php-fpm.conf
-            rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack-php_opcache.conf
+                    rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/nginx.conf
+                    rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/php-fpm.conf
+                    rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack-php_opcache.conf
+                ;;
+            esac
         fi
 
         mkdir -p "${ZABBIX_SERVER_LOG_PATH}"
         chown -R "${ZABBIX_USER}" "${ZABBIX_SERVER_LOG_PATH}"
         chown -R "${ZABBIX_USER}" "${ZABBIX_SERVER_CONFIG_PATH}"
-        mkdir -p "${ZABBIX_SERVER_CONFIG_PATH}"/"${ZABBIX_SERVER_CONFIG_FILE}".d/
-        chown -R "${ZABBIX_USER}" "${ZABBIX_SERVER_CONFIG_PATH}"/"${ZABBIX_SERVER_CONFIG_FILE}".d/
+        mkdir -p "${ZABBIX_SERVER_CONFIG_PATH%/}"/"${ZABBIX_SERVER_CONFIG_FILE}".d/
+        chown -R "${ZABBIX_USER}" "${ZABBIX_SERVER_CONFIG_PATH%/}"/"${ZABBIX_SERVER_CONFIG_FILE}".d/
 }
 
 zabbix_configure_webservice() {
@@ -292,23 +303,28 @@ EOF
         write_config_value "${config_file}" "ZABBIX_WEBSERVICE_LOG_TYPE" "LogType" lowercase
         write_config_value "${config_file}" "ZABBIX_WEBSERVICE_TIMEOUT" "Timeout"
 
-        if var_true "${CONTAINER_ENABLE_MONITORING}" && [ "${CONTAINER_MONITORING_BACKEND,,}" = "zabbix" ]; then
-            source /container/defaults/03-monitoring
-            cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-webservice.conf
+        if var_true "${CONTAINER_ENABLE_MONITORING}" ; then
+            source /container/base/defaults/*-monitoring
+            case "${CONTAINER_MONITORING_BACKEND,,}" in
+                "zabbix" )
+                    cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-webservice.conf
 # Zabbix Webservice Configuration - Automatically Generated
 # Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-zabbix
 # Autoregister=zabbixwebservice
 EOF
-            rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/nginx.conf
-            rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/php-fpm.conf
-            rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack-php_opcache.conf
+
+                    rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nginx.conf
+                    rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/php-fpm.conf
+                    rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack-php_opcache.conf
+                ;;
+            esac
         fi
 
         mkdir -p "${ZABBIX_WEBSERVICE_LOG_PATH}"
-        chown -R "${ZABBIX_USER}" "${ZABBIX_WEBSERVICE_LOG_PATH}"
-        chown -R "${ZABBIX_USER}" "${ZABBIX_WEBSERVICE_CONFIG_PATH}"
-        mkdir -p "${ZABBIX_WEBSERVICE_CONFIG_PATH}"/"${ZABBIX_WEBSERVICE_CONFIG_FILE}".d/
-        chown -R "${ZABBIX_USER}" "${ZABBIX_WEBSERVICE_CONFIG_PATH}"/"${ZABBIX_WEBSERVICE_CONFIG_FILE}".d/
+        chown -R "${ZABBIX_USER}" "${ZABBIX_WEBSERVICE_LOG_PATH%/}"
+        chown -R "${ZABBIX_USER}" "${ZABBIX_WEBSERVICE_CONFIG_PATH%/}"
+        mkdir -p "${ZABBIX_WEBSERVICE_CONFIG_PATH%/}"/"${ZABBIX_WEBSERVICE_CONFIG_FILE}".d/
+        chown -R "${ZABBIX_USER}" "${ZABBIX_WEBSERVICE_CONFIG_PATH%/}"/"${ZABBIX_WEBSERVICE_CONFIG_FILE}".d/
     fi
 }
 
@@ -322,7 +338,7 @@ zabbix_configure_web_frontend() {
     if [ -n "${SSO_SETTINGS}" ] ; then
         sso_settings="\$SSO['SETTINGS'] = [ ${SSO_SETTINGS} ];"
     fi
-    cat <<EOF > "${NGINX_WEBROOT}"/conf/zabbix.conf.php
+    cat <<EOF | silent tee "${NGINX_WEBROOT}"/conf/zabbix.conf.php
 <?php
 // Zabbix GUI configuration file.
 global \$DB;
