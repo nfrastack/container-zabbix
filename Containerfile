@@ -18,7 +18,7 @@ LABEL \
         org.opencontainers.image.licenses="MIT"
 
 ARG \
-    ZABBIX_VERSION="7.4.3" \
+    ZABBIX_VERSION="7.4.5" \
     ZABBIX_REPO_URL="https://github.com/zabbix/zabbix"
 
 COPY CHANGELOG.md /usr/src/container/CHANGELOG.md
