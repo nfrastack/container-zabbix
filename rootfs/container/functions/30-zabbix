@@ -147,7 +147,7 @@ EOF
         write_config_value "${config_file}" "ZABBIX_PROXY_VAULT_URL" "VaultURL"
         write_config_value "${config_file}" "ZABBIX_USER" "User"
 
-        echo "Include=${ZABBIX_PROXY_CONFIG_PATH}/${ZABBIX_PROXY_CONFIG_FILE}.d/*.conf" | silent tee -a "${ZABBIX_PROXY_CONFIG_PATH}"/"${ZABBIX_PROXY_CONFIG_FILE}"
+        echo "Include=${ZABBIX_PROXY_CONFIG_PATH}/${ZABBIX_PROXY_CONFIG_FILE}.d/*.conf" | silent tee -a "${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}"
     fi
 
     if var_true "${CONTAINER_ENABLE_MONITORING}" ; then
@@ -272,9 +272,9 @@ echo "Include=${ZABBIX_SERVER_CONFIG_PATH%/}/${ZABBIX_SERVER_CONFIG_FILE}.d/*.co
 # Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-zabbix
 # Autoregister=zabbixserver
 EOF
-                    rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/nginx.conf
-                    rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/php-fpm.conf
-                    rm -rf "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack-php_opcache.conf
+                    rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nginx.conf
+                    rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/php-fpm.conf
+                    rm -rf "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack-php_opcache.conf
                 ;;
             esac
         fi
