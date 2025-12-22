@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         build:
-          - { php_version: "8.4", php_version_latest: "true", distro: "alpine", distro_variant: "3.23", latest: "true", distro_latest: "true", arch: "linux/amd64,linux/arm64" }
+          - { php_version: "8.4", php_version_latest: "true", distro: "alpine", distro_variant: "3.22", latest: "true", distro_latest: "true", arch: "linux/amd64,linux/arm64" }
     env:
        BASE_IMAGE: "ghcr.io/nfrastack/container-nginx-php-fpm"
        PHP_BASE: ${{ matrix.build.php_version }}
