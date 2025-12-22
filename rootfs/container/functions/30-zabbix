@@ -155,9 +155,6 @@ EOF
         case "${CONTAINER_MONITORING_BACKEND,,}" in
             "zabbix" )
                 cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-proxy.conf
-    if var_true "${CONTAINER_ENABLE_MONITORING}" && [ "${CONTAINER_MONITORING_BACKEND,,}" = "zabbix" ]; then
-        source /container/defaults/*-monitoring
-        cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-proxy.conf
 # Zabbix Proxy Configuration - Automatically Generated
 # Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-zabbix
 # Autoregister=zabbixproxy
@@ -172,7 +169,7 @@ EOF
     mkdir -p "${ZABBIX_PROXY_LOG_PATH}"
     chown -R "${ZABBIX_USER}" "${ZABBIX_PROXY_LOG_PATH}"
     chown -R "${ZABBIX_USER}" "${ZABBIX_PROXY_CONFIG_PATH}"
-    mkdir -p "${ZABBIX_PROXY_CONFIG_PATH$/}"/"${ZABBIX_PROXY_CONFIG_FILE}".d/
+    mkdir -p "${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}".d/
     chown -R "${ZABBIX_USER}" "${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}".d/
 }
 
@@ -260,7 +257,7 @@ write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_UNREACHABLE" "Unrea
 write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_VALUE_SIZE" "ValueCacheSize"
 write_config_value "${config_file}" "ZABBIX_SERVER_WEBSERVICE_URL" "WebServiceURL"
 
-echo "Include=${ZABBIX_SERVER_CONFIG_PATH%/}/${ZABBIX_SERVER_CONFIG_FILE}.d/*.conf" >> "${config_file}"
+echo "Include=${ZABBIX_SERVER_CONFIG_PATH%/}/${ZABBIX_SERVER_CONFIG_FILE}.d/*.conf" | silent tee -a "${config_file}"
     fi
 
         if var_true "${CONTAINER_ENABLE_MONITORING}" ; then
@@ -371,6 +368,6 @@ write_config_value() {
         if [ "${lowercase_flag}" = "lowercase" ] ; then
             val="$(printf '%s' "${val}" | tr '[:upper:]' '[:lower:]')"
         fi
-        echo "${config_key}=${val}" >> "${config_file}"
+        echo "${config_key}=${val}" | silent tee -a "${config_file}"
     fi
 }
