@@ -1,7 +1,7 @@
 ## 3.5.0pre 2025-10-02 <code at nfrastack dot com>
 
    ### Changed
-      - Zabbix 7.4.6
+      - Zabbix 7.4.7
       - Change base image to nfrastack/nginx-php-fpm
       - PHP 8.4
 
