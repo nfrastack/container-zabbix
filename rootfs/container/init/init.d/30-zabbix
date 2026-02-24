@@ -16,6 +16,7 @@ transform_var file \
                     DB_PORT \
                     DB_USER
 
+
 case "${ZABBIX_MODE,,}" in
     "proxy" )
         print_debug "Zabbix Container Mode; Proxy"

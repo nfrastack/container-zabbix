@@ -13,8 +13,6 @@ services:
         - ./data/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys
         - ./data/var/lib/zabbix/mibs:/var/lib/zabbix/mibs
         - ./logs/server:/var/log/zabbix/server
-      links:
-        - zabbix-example-com-db
       ulimits:
         nproc: 65535
         nofile:
@@ -23,8 +21,9 @@ services:
         #mem_limit: 512m
       environment:
         - TIMEZONE=America/Vancouver
-        - ZABBIX_MODE=SERVER
         - CONTAINER_NAME=zabbix-example-com-server
+
+        - ZABBIX_MODE=SERVER
 
         - DB_HOST=zabbix-example-com-db
         - DB_PORT=5432
@@ -41,12 +40,6 @@ services:
     zabbix-example-com-app:
       image: docker.io/nfrastack/zabbix:latest
       container_name: zabbix-example-com-app
-      #mem_limit: 512m
-      ports:
-        - 8081:80
-      links:
-        - zabbix-example-com-db
-        - zabbix-example-com-server
       labels:
         - traefik.enable=true
         - traefik.http.routers.zabbix-example.com.rule=Host(`zabbix.example.com`)
@@ -55,8 +48,9 @@ services:
         - ./logs/nginx:/www/logs/nginx
       environment:
         - TIMEZONE=America/Vancouver
-        - ZABBIX_MODE=WEB
         - CONTAINER_NAME=zabbix-example.com-app
+
+        - ZABBIX_MODE=WEB
         - ZABBIX_SERVER_HOST=zabbix-example-com-server
         - ZABBIX_SERVER_PORT=10051
         - ZABBIX_SERVER_NAME=zabbix.example.com
@@ -82,12 +76,14 @@ services:
         - /var/local/db/zabbix.example.com:/var/lib/postgresql/data
       environment:
         - TIMEZONE=America/Vancouver
+        - CONTAINER_NAME=zabbix-example-com-db
+
+        - ZABBIX_SERVER=172.16.0.0/12
+        - ZABBIX_SERVER_ACTIVE=zabbix-example-com-server
+
         - POSTGRES_USER=zabbix
         - POSTGRES_PASSWORD=password
         - POSTGRES_DB=zabbix
-        - CONTAINER_NAME=zabbix-example-com-db
-        - ZABBIX_SERVER=172.16.0.0/12
-        - ZABBIX_SERVER_ACTIVE=zabbix-example-com-server
       networks:
         services:
           aliases:
@@ -101,8 +97,10 @@ services:
       volumes:
         - ./logs/proxy:/var/log/zabbix/proxy
       environment:
-        - ZABBIX_MODE=PROXY
+        - TIMEZONE=America/Vancouver
         - CONTAINER_NAME=zabbix-example-com-proxy
+
+        - ZABBIX_MODE=PROXY
         - ZABBIX_PROXY_HOSTNAME=zabbix-proxy.example.com
         - ZABBIX_PROXY_SERVER=zabbix.example.com
         - ZABBIX_PROXY_SERVER_PORT=10051
@@ -123,6 +121,7 @@ services:
       environment:
         - TIMEZONE=America/Vancouver
         - CONTAINER_NAME=zabbix-example-com-db-backup
+
         - ZABBIX_SERVER=172.16.0.0/12
         - ZABBIX_SERVER_ACTIVE=zabbix-example-com-server
 

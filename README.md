@@ -4,7 +4,6 @@
 
 This repository will build a container for [Zabbix](https://www.zabbix.org).
 
-
 ## Maintainer
 
 - [Nfrastack](https://www.nfrastack.com)
