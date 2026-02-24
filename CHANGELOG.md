@@ -5,7 +5,6 @@
       - Change base image to nfrastack/nginx-php-fpm:8.0.0pre
       - PHP 8.4
 
-
 ## 3.4.99 2025-10-02 <dave at tiredofit dot ca>
 
 Add EOL Notice and deprecate image
