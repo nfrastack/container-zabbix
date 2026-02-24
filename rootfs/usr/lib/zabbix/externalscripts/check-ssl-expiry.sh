@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
 #
 # SPDX-License-Identifier: MIT
 
@@ -22,7 +22,7 @@ cert_data="$(/usr/bin/timeout $TIMEOUT /usr/bin/openssl s_client -host $SERVER -
 if [ -n "$cert_data" ] ; then
 	end_date_seconds=$(date "+%s" --date "${cert_data// GMT/}")
 	now_seconds=$(date "+%s")
-	DAYS=$((($end_date_seconds-$now_seconds)/24/3600))
+	DAYS=$(((${end_date_seconds}-${now_seconds})/24/3600))
 	echo $DAYS
 else
 	exit 124

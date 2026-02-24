@@ -100,7 +100,7 @@ Below is the complete list of available options that can be used to customize yo
 | Parameter          | Description                                               | Default              |
 | ------------------ | --------------------------------------------------------- | -------------------- |
 | `ZABBIX_CERT_PATH` | Path to the directory containing Zabbix certificates      | `/etc/zabbix/certs/` |
-| `ZABBIX_MODE`      | Mode in which Zabbix is running (e.g., `PROXY`, `SERVER`) | `PROXY`              |
+| `ZABBIX_MODE`      | Mode in which Zabbix is running (e.g., `PROXY`, `SERVER`, `WEB`, `WEBSERVICE`) | `PROXY`              |
 | `ZABBIX_USER`      | User under which Zabbix is running                        | `zabbix`             |
 
 ### Zabbix Proxy Options

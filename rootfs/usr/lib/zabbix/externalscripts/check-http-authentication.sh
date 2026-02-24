@@ -1,16 +1,16 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
 #
 # SPDX-License-Identifier: MIT
 
 # HTTP Check Script for websites that require authentication - Specifically LemonLDAP:NG Protected
 # Dave Conroy <tiredofit@github> 2022-02-17
-# Usage: http_cehck_authentication.sh <mode> <username> <password> <auth_url> <site_url> <string_to_check>"
+# Usage: http_check_authentication.sh <mode> <username> <password> <auth_url> <site_url> <string_to_check>"
 
 ###
 authenticate() {
      headers=$(mktemp)
-     authenticate_response=$(curl -sSL -D $headers \
+     authenticate_response=$(curl -sSL -D ${headers} \
                                        -H "Accept: application/json" \
                                        -d user="$1" \
                                        --data-urlencode password=$2 \
@@ -21,17 +21,17 @@ authenticate() {
           lifetime=$(cat $headers | grep "set-cookie" | cut -d ';' -f 4 | cut -d = -f 2)
           echo $cookie > /tmp/.authinfo
           echo $lifetime >> /tmp/.authinfo
-          rm -rf $headers
+          rm -rf ${headers}
      else
           echo "** Unable to authenticate"
-          rm -rf $headers
+          rm -rf ${headers}
           exit 1
      fi
 }
 
 check_cookie_age() {
      ### Check to see if its over a day
-     if [ "$(stat c %Y /tmp/.authinfo)" -le $(( `date +%s` - $(tail -n 1 /tmp/.authinfo) )) ]; then
+     if [ "$(stat c %Y /tmp/.authinfo)" -le $(( $(date +%s) - $(tail -n 1 /tmp/.authinfo) )) ]; then
        cookie_age="invalid"
      else
        cookie_age="valid"
@@ -41,7 +41,7 @@ check_cookie_age() {
 ###
 
 if [ -z $1 ] || [ -z $2 ] || [ -z $3 ] || [ -z $4 ] || [ -z $5 ] ; then
-   echo "## Website Checker | 2021-02-17 | <daveconroy@selfdesign.org>"
+   echo "## Website Checker | 2021-02-17 | Dave Conroy <tiredofit@github>"
    echo "## Usage: $(basename $0) <mode> <username> <password> <auth_url> <site_url> <string_to_check_dependent_on_mode>"
    echo "##        Mode can either be 'response' or 'string' | 'string-insensitive' . When 'string' chosen you must fill in a string to search for"
    exit 1

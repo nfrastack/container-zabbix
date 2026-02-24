@@ -1,29 +1,42 @@
-# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
 #
 # SPDX-License-Identifier: MIT
 
 zabbix_bootstrap_db() {
-    if [ -n "${DB_PASS}" ]; then
-        export PGPASSWORD="${DB_PASS}"
-    fi
+    case "${ZABBIX_SERVER_DB_TYPE,,}" in
+        postgres* )
+            if [ -n "${DB_PASS}" ]; then
+                export PGPASSWORD="${DB_PASS}"
+            fi
 
-    dbversion_table=$(psql -A -q -t -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -c "SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE  n.nspname = '${DB_SCHEMA}' AND c.relname = 'dbversion'" "${DB_NAME}" 2>/dev/null)
+            dbversion_table=$(psql -A -q -t -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -c "SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE  n.nspname = '${DB_SCHEMA}' AND c.relname = 'dbversion'" "${DB_NAME}" 2>/dev/null)
 
+            if [ -n "${dbversion_table}" ]; then
+                print_debug "Table '${DB_NAME}.dbversion' already exists."
+                db_version=$(psql -A -q -t -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -c "SELECT mandatory FROM ${DB_SCHEMA}.dbversion" "${DB_NAME}")
+            fi
 
-    if [ -n "${dbversion_table}" ]; then
-        print_debug "Table '${DB_NAME}.dbversion' already exists."
-        db_version=$(psql -A -q -t -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -c "SELECT mandatory FROM ${DB_SCHEMA}.dbversion" "${DB_NAME}")
-    fi
+            if [ -z "${db_version}" ]; then
+                print_warn "Creating '${DB_NAME}' schema in PostgreSQL"
+                cat /container/data/zabbix-server/sql/postgresql/schema.sql | psql -q -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" "${DB_NAME}" 1>/dev/null
+                print_debug "Fill the schema with initial data"
+                cat /container/data/zabbix-server/sql/postgresql/images.sql | psql -q -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" "${DB_NAME}" 1>/dev/null
+                cat /container/data/zabbix-server/sql/postgresql/data.sql | psql -q -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" "${DB_NAME}" 1>/dev/null
+            fi
 
-    if [ -z "${db_version}" ]; then
-        print_warn "Creating '${DB_NAME}' schema in PostgreSQL"
-        cat /usr/share/doc/zabbix-server/sql/postgresql/schema.sql | psql -q -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" "${DB_NAME}" 1>/dev/null
-        print_debug "Fill the schema with initial data"
-        cat /usr/share/doc/zabbix-server/sql/postgresql/images.sql | psql -q -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" "${DB_NAME}" 1>/dev/null
-        cat /usr/share/doc/zabbix-server/sql/postgresql/data.sql | psql -q -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" "${DB_NAME}" 1>/dev/null
-    fi
-
-    unset PGPASSWORD
+            unset PGPASSWORD
+        ;;
+        "mysql" | "mariadb" )
+            print_error "MySQL/MariaDB is not supported as a database backend in this container for now.."
+        ;;
+        "sqlite" | "sqlite3" )
+            print_error "SQLite is not supported as a database backend in this container for now.."
+        ;;
+        * )
+            print_error "Unsupported DB_TYPE '${ZABBIX_SERVER_DB_TYPE}'"
+            exit 1
+        ;;
+    esac
 }
 
 zabbix_configure_proxy() {
@@ -43,7 +56,7 @@ zabbix_configure_proxy() {
                 # openssl rand -hex 32 = 256bit
                 ZABBIX_PROXY_TLS_PSK_FILE="${ZABBIX_CERT_PATH%/}/zabbix_proxy.psk"
                 mkdir -p "${ZABBIX_CERT_PATH}"
-                echo "${ZABBIX_PROXY_TLS_PSK_KEY}" | silent tee "${ZABBIX_PROXY_TLS_PSK_FILE}"
+                echo "${ZABBIX_PROXY_TLS_PSK_KEY}" | write_file "${ZABBIX_PROXY_TLS_PSK_FILE}"
                 chmod -f 0600 "${ZABBIX_PROXY_TLS_PSK_FILE}"
                 chown -f -R "${ZABBIX_USER}" "${ZABBIX_CERT_PATH}"
             fi
@@ -66,7 +79,8 @@ EOF
             )
         fi
 
-        cat <<EOF | silent tee "${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}"
+        local config_file="${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}"
+        write_file "${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}" <<EOF
 # Custom Generated Zabbix Proxy configuration. If you want to use your own config set 'ZABBIX_PROXY_SETUP_TYPE=MANUAL'
 # Generated on $(TZ=${TIMEZONE} date +'%Y-%m-%d %H:%M:%S %Z')
 
@@ -147,14 +161,14 @@ EOF
         write_config_value "${config_file}" "ZABBIX_PROXY_VAULT_URL" "VaultURL"
         write_config_value "${config_file}" "ZABBIX_USER" "User"
 
-        echo "Include=${ZABBIX_PROXY_CONFIG_PATH}/${ZABBIX_PROXY_CONFIG_FILE}.d/*.conf" | silent tee -a "${ZABBIX_PROXY_CONFIG_PATH%/}"/"${ZABBIX_PROXY_CONFIG_FILE}"
+        echo "Include=${config_file}.d/*.conf" | write_file -a "${config_file}"
     fi
 
     if var_true "${CONTAINER_ENABLE_MONITORING}" ; then
         source /container/base/defaults/*-monitoring
         case "${CONTAINER_MONITORING_BACKEND,,}" in
             "zabbix" )
-                cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-proxy.conf
+                write_file "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-proxy.conf <<EOF
 # Zabbix Proxy Configuration - Automatically Generated
 # Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-zabbix
 # Autoregister=zabbixproxy
@@ -194,7 +208,8 @@ zabbix_configure_scripts_external() {
 zabbix_configure_server() {
     if [ "${ZABBIX_SERVER_SETUP_TYPE,,}" = "auto" ] ; then
         print_info "Configuring Zabbix Server"
-        cat <<EOF | silent tee "${ZABBIX_SERVER_CONFIG_PATH%/}"/"${ZABBIX_SERVER_CONFIG_FILE}"
+        local config_file="${ZABBIX_SERVER_CONFIG_PATH%/}"/"${ZABBIX_SERVER_CONFIG_FILE}"
+        write_file "${config_file}" <<EOF
 # Custom Generated Zabbix Server configuration. If you want to use your own config set 'ZABBIX_SERVER_SETUP_TYPE=MANUAL'
 # Generated on $(TZ=${TIMEZONE} date +'%Y-%m-%d %H:%M:%S %Z')
 
@@ -209,62 +224,61 @@ SSLKeyLocation=/var/lib/zabbix/ssl/keys/
 LogFile=${ZABBIX_SERVER_LOG_PATH%/}/${ZABBIX_SERVER_LOG_FILE}
 
 EOF
+        write_config_value "${config_file}" "DB_HOST" "DBHost"
+        write_config_value "${config_file}" "DB_NAME" "DBName"
+        write_config_value "${config_file}" "DB_PASS" "DBPassword"
+        write_config_value "${config_file}" "DB_PORT" "DBPort"
+        write_config_value "${config_file}" "DB_SCHEMA" "DBSchema"
+        write_config_value "${config_file}" "DB_USER" "DBUser"
+        write_config_value "${config_file}" "ZABBIX_SERVER_ALLOW_UNSUPPORTED_DB" "AllowUnsupportedDBVersions"
+        write_config_value "${config_file}" "ZABBIX_SERVER_ALLOW_ROOT" "AllowRoot"
+        write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_SIZE" "CacheSize"
+        write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_UPDATE_FREQUENCY" "CacheUpdateFrequency"
+        write_config_value "${config_file}" "ZABBIX_SERVER_DEBUG_LEVEL" "DebugLevel"
+        write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_HISTORY_SIZE" "HistoryCacheSize"
+        write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_HISTORY_INDEX_SIZE" "HistoryIndexCacheSize"
+        write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_HOUSEKEEPING" "HousekeepingFrequency"
+        write_config_value "${config_file}" "ZABBIX_SERVER_LISTEN_PORT" "ListenPort"
+        write_config_value "${config_file}" "ZABBIX_SERVER_LOGFILESIZE" "LogFileSize"
+        write_config_value "${config_file}" "ZABBIX_SERVER_LOG_TYPE" "LogType" lowercase
+        write_config_value "${config_file}" "ZABBIX_SERVER_MAX_HOUSEKEEPING_DELETE" "MaxHousekeeperDelete"
+        write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_PROXY_CONFIG" "ProxyConfigFrequency"
+        write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_PROXY_DATA" "ProxyDataFrequency"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_ALERTERS" "StartAlerters"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_DB_SYNCERS" "StartDBSyncers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_DISCOVERERS" "StartDiscoverers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_ESCALATORS" "StartEscalators"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_HTTP" "StartHTTPPollers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_HISTORY" "StartHistoryPollers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_IPMI" "StartIPMIPollers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_JAVA" "StartJavaPollers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_LLD_PROCESSORS" "StartLLDProcessors"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_PINGERS" "StartPingers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS" "StartPollers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_UNREACHABLE" "StartPollersUnreachable"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_PREPROCESSORS" "StartPreprocessors"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_PROXY_POLLERS" "StartProxyPollers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_REPORT_WRITERS" "StartReportWriters"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_SNMPTRAPPER" "StartSNMPTrapper"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_TIMERS" "StartTimers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_START_TRAPPERS" "StartTrappers"
+        write_config_value "${config_file}" "ZABBIX_SERVER_TIMEOUT" "Timeout"
+        write_config_value "${config_file}" "ZABBIX_SERVER_TIMEOUT_TRAPPER" "TrapperTimeout"
+        write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_TREND_FUNCTION_SIZE" "TrendFunctionCacheSize"
+        write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_UNAVAILABLE_DELAY" "UnavailableDelay"
+        write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_UNREACHABLE_DELAY" "UnreachableDelay"
+        write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_UNREACHABLE" "UnreachablePeriod"
+        write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_VALUE_SIZE" "ValueCacheSize"
+        write_config_value "${config_file}" "ZABBIX_SERVER_WEBSERVICE_URL" "WebServiceURL"
 
-write_config_value "${config_file}" "DB_HOST" "DBHost"
-write_config_value "${config_file}" "DB_NAME" "DBName"
-write_config_value "${config_file}" "DB_PASS" "DBPassword"
-write_config_value "${config_file}" "DB_PORT" "DBPort"
-write_config_value "${config_file}" "DB_SCHEMA" "DBSchema"
-write_config_value "${config_file}" "DB_USER" "DBUser"
-write_config_value "${config_file}" "ZABBIX_SERVER_ALLOW_UNSUPPORTED_DB" "AllowUnsupportedDBVersions"
-write_config_value "${config_file}" "ZABBIX_SERVER_ALLOW_ROOT" "AllowRoot"
-write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_SIZE" "CacheSize"
-write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_UPDATE_FREQUENCY" "CacheUpdateFrequency"
-write_config_value "${config_file}" "ZABBIX_SERVER_DEBUG_LEVEL" "DebugLevel"
-write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_HISTORY_SIZE" "HistoryCacheSize"
-write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_HISTORY_INDEX_SIZE" "HistoryIndexCacheSize"
-write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_HOUSEKEEPING" "HousekeepingFrequency"
-write_config_value "${config_file}" "ZABBIX_SERVER_LISTEN_PORT" "ListenPort"
-write_config_value "${config_file}" "ZABBIX_SERVER_LOGFILESIZE" "LogFileSize"
-write_config_value "${config_file}" "ZABBIX_SERVER_LOG_TYPE" "LogType" lowercase
-write_config_value "${config_file}" "ZABBIX_SERVER_MAX_HOUSEKEEPING_DELETE" "MaxHousekeeperDelete"
-write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_PROXY_CONFIG" "ProxyConfigFrequency"
-write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_PROXY_DATA" "ProxyDataFrequency"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_ALERTERS" "StartAlerters"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_DB_SYNCERS" "StartDBSyncers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_DISCOVERERS" "StartDiscoverers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_ESCALATORS" "StartEscalators"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_HTTP" "StartHTTPPollers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_HISTORY" "StartHistoryPollers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_IPMI" "StartIPMIPollers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_JAVA" "StartJavaPollers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_LLD_PROCESSORS" "StartLLDProcessors"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_PINGERS" "StartPingers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS" "StartPollers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_POLLERS_UNREACHABLE" "StartPollersUnreachable"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_PREPROCESSORS" "StartPreprocessors"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_PROXY_POLLERS" "StartProxyPollers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_REPORT_WRITERS" "StartReportWriters"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_SNMPTRAPPER" "StartSNMPTrapper"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_TIMERS" "StartTimers"
-write_config_value "${config_file}" "ZABBIX_SERVER_START_TRAPPERS" "StartTrappers"
-write_config_value "${config_file}" "ZABBIX_SERVER_TIMEOUT" "Timeout"
-write_config_value "${config_file}" "ZABBIX_SERVER_TIMEOUT_TRAPPER" "TrapperTimeout"
-write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_TREND_FUNCTION_SIZE" "TrendFunctionCacheSize"
-write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_UNAVAILABLE_DELAY" "UnavailableDelay"
-write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_UNREACHABLE_DELAY" "UnreachableDelay"
-write_config_value "${config_file}" "ZABBIX_SERVER_FREQUENCY_UNREACHABLE" "UnreachablePeriod"
-write_config_value "${config_file}" "ZABBIX_SERVER_CACHE_VALUE_SIZE" "ValueCacheSize"
-write_config_value "${config_file}" "ZABBIX_SERVER_WEBSERVICE_URL" "WebServiceURL"
-
-echo "Include=${ZABBIX_SERVER_CONFIG_PATH%/}/${ZABBIX_SERVER_CONFIG_FILE}.d/*.conf" | silent tee -a "${config_file}"
+        echo "Include=${config_file}.d/*.conf" | write_file -a "${config_file}"
     fi
 
         if var_true "${CONTAINER_ENABLE_MONITORING}" ; then
             source /container/base/defaults/*-monitoring
             case "${CONTAINER_MONITORING_BACKEND,,}" in
                 "zabbix" )
-                    cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-server.conf
+                    write_file "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-server.conf <<EOF
 # Zabbix Server Configuration - Automatically Generated
 # Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-zabbix
 # Autoregister=zabbixserver
@@ -286,7 +300,8 @@ EOF
 zabbix_configure_webservice() {
     if [ "${ZABBIX_WEBSERVICE_SETUP_TYPE,,}" = "auto" ] ; then
         print_info "Configuring Zabbix Webservice"
-        cat <<EOF | silent tee "${ZABBIX_WEBSERVICE_CONFIG_PATH%/}"/"${ZABBIX_WEBSERVICE_CONFIG_FILE}"
+        local config_file="${ZABBIX_WEBSERVICE_CONFIG_PATH%/}"/"${ZABBIX_WEBSERVICE_CONFIG_FILE}"
+        write_file "${config_file}" <<EOF
 # Custom Generated Zabbix Webservice configuration. If you want to use your own config set 'ZABBIX_WEBSERVICE_SETUP_TYPE=MANUAL'
 # Generated on $(TZ=${TIMEZONE} date +'%Y-%m-%d %H:%M:%S %Z')
 
@@ -304,7 +319,7 @@ EOF
             source /container/base/defaults/*-monitoring
             case "${CONTAINER_MONITORING_BACKEND,,}" in
                 "zabbix" )
-                    cat <<EOF | silent tee "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-webservice.conf
+                    write_file "${ZABBIX_CONFIG_PATH%/}"/"${ZABBIX_CONFIG_FILE}.d"/nfrastack_zabbix-webservice.conf <<EOF
 # Zabbix Webservice Configuration - Automatically Generated
 # Find Companion Zabbix Server Templates at https://github.com/nfrastack/container-zabbix
 # Autoregister=zabbixwebservice
@@ -335,7 +350,7 @@ zabbix_configure_web_frontend() {
     if [ -n "${SSO_SETTINGS}" ] ; then
         sso_settings="\$SSO['SETTINGS'] = [ ${SSO_SETTINGS} ];"
     fi
-    cat <<EOF | silent tee "${NGINX_WEBROOT}"/conf/zabbix.conf.php
+    write_file "${NGINX_WEBROOT}"/conf/zabbix.conf.php <<EOF
 <?php
 // Zabbix GUI configuration file.
 global \$DB;
@@ -358,16 +373,16 @@ EOF
 }
 
 write_config_value() {
-    local config_file="$1"
-    local env_var_name="$2"
-    local config_key="$3"
-    local lowercase_flag="$4"
+    local config_file="${1}"
+    local env_var_name="${2}"
+    local config_key="${3}"
+    local lowercase_flag="${4}"
 
     if [ -n "${!env_var_name}" ]; then
         local val="${!env_var_name}"
         if [ "${lowercase_flag}" = "lowercase" ] ; then
             val="$(printf '%s' "${val}" | tr '[:upper:]' '[:lower:]')"
         fi
-        echo "${config_key}=${val}" | silent tee -a "${config_file}"
+        echo "${config_key}=${val}" | write_file -a "${config_file}"
     fi
 }

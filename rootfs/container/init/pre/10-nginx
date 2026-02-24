@@ -1,0 +1,68 @@
+#!/command/with-contenv bash
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
+#
+# SPDX-License-Identifier: MIT
+
+source /container/base/functions/container/init
+prepare_service
+SERVICE_NAME="nginx-preloader"
+
+case "${ZABBIX_MODE,,}" in
+    "proxy" )
+        source /container/defaults/zabbix-proxy
+        _container_build_env " \
+                                10-nginx/ENABLE_NGINX=FALSE \
+                                20-php-fpm/ENABLE_PHPFPM=FALSE \
+                             "
+        service_stop 10-nginx
+        service_stop 11-nginx-config-reload
+        service_stop 20-php-fpm
+        service_stop 30-zabbix-server
+        service_stop 30-zabbix-webservice
+        rm -rf /etc/logrotate.d/{nginx,php-fpm}
+    ;;
+    "server" )
+        _container_build_env " \
+                                10-nginx/ENABLE_NGINX=FALSE \
+                                20-php-fpm/ENABLE_PHPFPM=FALSE \
+                             "
+        service_stop 10-nginx
+        service_stop 11-nginx-config-reload
+        service_stop 20-php-fpm
+        service_stop 30-zabbix-proxy
+        service_stop 30-zabbix-webservice
+        rm -rf /etc/logrotate.d/{nginx,php-fpm}
+    ;;
+    "web" | "frontend" )
+        _container_build_env " \
+                                10-nginx/ENABLE_NGINX=TRUE \
+                                10-nginx/NGINX_SITE_ENABLED=zabbix \
+                                20-php-fpm/ENABLE_PHPFPM=TRUE \
+                                20-php-fpm/PHP_ENABLE_CREATE_SAMPLE_PHP=FALSE \
+                                20-php-fpm/PHP_MODULE_ENABLE_LDAP=TRUE \
+                                20-php-fpm/PHP_MODULE_ENABLE_SOCKETS=TRUE \
+                                20-php-fpm/PHP_MODULE_ENABLE_XMLWRITER=TRUE \
+                             "
+        service_stop 30-zabbix-proxy
+        service_stop 30-zabbix-server
+        service_stop 30-zabbix-webservice
+    ;;
+    "webservice" )
+        _container_build_env " \
+                                10-nginx/ENABLE_NGINX=FALSE \
+                                20-php-fpm/ENABLE_PHPFPM=FALSE \
+                             "
+        service_stop 10-nginx
+        service_stop 11-nginx-config-reload
+        service_stop 20-php-fpm
+        service_stop 30-zabbix-proxy
+        service_stop 30-zabbix-server
+        rm -rf /etc/logrotate.d/{nginx,php-fpm}
+    ;;
+    *)
+        print_error "Unknown ZABBIX_MODE - exiting."
+        exit 1
+    ;;
+esac
+
+liftoff

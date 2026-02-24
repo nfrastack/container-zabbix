@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: © 2025 Nfrastack <code@nfrastack.com>
+# SPDX-FileCopyrightText: © 2026 Nfrastack <code@nfrastack.com>
 #
 # SPDX-License-Identifier: MIT
 
@@ -26,13 +26,6 @@ COPY LICENSE /usr/src/container/LICENSE
 COPY README.md /usr/src/container/README.md
 
 ENV \
-    PHP_ENABLE_CREATE_SAMPLE_PHP=FALSE \
-    PHP_MODULE_ENABLE_LDAP=TRUE \
-    PHP_MODULE_ENABLE_SOCKETS=TRUE \
-    PHP_MODULE_ENABLE_XMLWRITER=TRUE \
-    NGINX_SITE_ENABLED=zabbix \
-    NGINX_WEBROOT=/www/zabbix \
-    CONTAINER_ENABLE_MESSAGING=FALSE \
     IMAGE_NAME="nfrastack/zabbix" \
     IMAGE_REPO_URL="https://github.com/nfrastack/container-zabbix/"
 
@@ -58,6 +51,7 @@ RUN echo "" && \
                                 postgresql-dev \
                                 sqlite-dev \
                                 unixodbc-dev \
+                                yaml-dev \
                             " \
                         && \
     ZABBIX_RUN_DEPS_ALPINE=" \
@@ -83,6 +77,7 @@ RUN echo "" && \
                                 sqlite-libs \
                                 unixodbc \
                                 whois \
+                                yaml \
                         " \
                     && \
     \
@@ -102,7 +97,7 @@ RUN echo "" && \
             /etc/zabbix \
             /usr/lib/zabbix/alertscripts \
             /usr/lib/zabbix/externalscripts \
-            /usr/share/doc/zabbix-server/sql/postgresql \
+            /usr/share/doc/zabbix-server/sql \
             /var/lib/zabbix \
             /var/lib/zabbix/enc \
             /var/lib/zabbix/export \
@@ -170,9 +165,15 @@ RUN echo "" && \
     cp src/zabbix_sender/zabbix_sender /usr/sbin/zabbix_sender && \
     cp src/go/bin/zabbix_agent2 /usr/sbin/zabbix_agent2 && \
     cp src/zabbix_server/zabbix_server /usr/sbin/zabbix_server && \
-    cp -R database/postgresql /usr/share/doc/zabbix-server/sql && \
-    mv ui "${NGINX_WEBROOT}" && \
-    chown -R "${NGINX_USER}":"${NGINX_GROUP}" "${NGINX_WEBROOT}" && \
+    cp src/go/bin/zabbix_web_service /usr/sbin/zabbix_web_service && \
+    mkdir -p /container/data/zabbix-server/sql && \
+    cp -R \
+                database/mysql \
+                database/postgresql \
+                database/sqlite3 \
+            /container/data/zabbix-server/sql \
+    && \
+    mv ui /www/zabbix && \
     chown --quiet -R zabbix:root \
                        /etc/zabbix/ \
                        /var/lib/zabbix/ && \

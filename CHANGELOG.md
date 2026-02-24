@@ -1,9 +1,10 @@
-## 3.5.0pre 2025-10-02 <code at nfrastack dot com>
+## 3.5.0 2026-02-23 <code at nfastack dot com>
 
-   ### Changed
+   ### Added
       - Zabbix 7.4.7
-      - Change base image to nfrastack/nginx-php-fpm
+      - Change base image to nfrastack/nginx-php-fpm:8.0.0pre
       - PHP 8.4
+
 
 ## 3.4.99 2025-10-02 <dave at tiredofit dot ca>
 
