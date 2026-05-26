@@ -1,3 +1,13 @@
+## 3.5.3 2026-05-26 <code at nfrastack dot com>
+
+   ### Added
+      - Zabbix 7.4.10
+
+   ### Changed
+      - Fix issue with web frontend not correctly using webroot
+      - Replace upstream nfrastack/container-base zabbix agents if previously installed
+
+
 ## 3.5.2 2026-04-09 <code at nfastack dot com>
 
    ### Added

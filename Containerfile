@@ -18,7 +18,7 @@ LABEL \
         org.opencontainers.image.licenses="MIT"
 
 ARG \
-    ZABBIX_VERSION="7.4.9" \
+    ZABBIX_VERSION="7.4.10" \
     ZABBIX_REPO_URL="https://github.com/zabbix/zabbix"
 
 COPY CHANGELOG.md /usr/src/container/CHANGELOG.md
@@ -157,13 +157,11 @@ RUN echo "" && \
             --silent && \
     make -j"$(nproc)" -s dbschema && \
     make -j"$(nproc)" -s && \
+    cp src/zabbix_get/zabbix_get /usr/local/bin/zabbix_get && \
+    cp src/zabbix_sender/zabbix_sender /usr/local/bin/zabbix_sender && \
+    cp src/zabbix_agent/zabbix_agentd /usr/local/sbin/zabbix_agentd && \
+    cp src/go/bin/zabbix_agent2 /usr/local/bin/zabbix_agent2 && \
     cp src/zabbix_proxy/zabbix_proxy /usr/sbin/zabbix_proxy && \
-    cp src/zabbix_get/zabbix_get /usr/bin/zabbix_get && \
-    cp src/zabbix_sender/zabbix_sender /usr/bin/zabbix_sender && \
-    cp src/zabbix_agent/zabbix_agentd /usr/sbin/zabbix_agentd && \
-    cp src/zabbix_get/zabbix_get /usr/sbin/zabbix_get && \
-    cp src/zabbix_sender/zabbix_sender /usr/sbin/zabbix_sender && \
-    cp src/go/bin/zabbix_agent2 /usr/sbin/zabbix_agent2 && \
     cp src/zabbix_server/zabbix_server /usr/sbin/zabbix_server && \
     cp src/go/bin/zabbix_web_service /usr/sbin/zabbix_web_service && \
     mkdir -p /container/data/zabbix-server/sql && \
@@ -173,7 +171,6 @@ RUN echo "" && \
                 database/sqlite3 \
             /container/data/zabbix-server/sql \
     && \
-    mkdir -p /www/zabbix && \
     mv ui /www/zabbix && \
     chown --quiet -R zabbix:root \
                        /etc/zabbix/ \
