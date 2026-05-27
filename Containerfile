@@ -30,6 +30,10 @@ ENV \
     IMAGE_REPO_URL="https://github.com/nfrastack/container-zabbix/"
 
 RUN echo "" && \
+    BUILD_ENV=" \
+                20-php-fpm/PHP_TIMEOUT=300 \
+              " \
+              && \
     ZABBIX_BUILD_DEPS_ALPINE=" \
                                 alpine-sdk \
                                 autoconf \
